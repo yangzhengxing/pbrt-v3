@@ -1,0 +1,15 @@
+#include "data/shader/mat/state.dom"
+
+USE_TEXTURE2D(tDisplacementHeightMap);
+
+uniform vec2	uDisplacementScaleBias;
+
+void	DisplacementHeight( inout ControlState s, inout PatchState ps, inout DomainState ds )
+{
+	float disp = texture2DLod( tDisplacementHeightMap, ds.texcoord, 0.0 ).x;
+	disp = disp*uDisplacementScaleBias.x + uDisplacementScaleBias.y;
+
+	ds.position += disp * ds.normal;
+}
+
+#define	Displacement	DisplacementHeight

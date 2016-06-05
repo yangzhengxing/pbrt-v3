@@ -1,0 +1,47 @@
+#ifndef MSET_DOM_STATE_H
+#define MSET_DOM_STATE_H
+
+#ifndef CONTROL_POINTS_OUT
+	#define	CONTROL_POINTS_OUT		3
+#endif
+
+#ifndef PATCH_CONSTANT_COUNT
+	#define	PATCH_CONSTANT_COUNT	0
+#endif
+#ifndef PATCH_CONSTANT_TYPE
+	#define	PATCH_CONSTANT_TYPE		vec4
+#endif
+
+struct	ControlState
+{
+	vec3	position[CONTROL_POINTS_OUT];
+	vec4	color[CONTROL_POINTS_OUT];
+	vec3	tangent[CONTROL_POINTS_OUT];
+	vec3	bitangent[CONTROL_POINTS_OUT];
+	vec3	normal[CONTROL_POINTS_OUT];
+	vec4	texcoord[CONTROL_POINTS_OUT];
+
+	vec3	domainCoord;
+};
+
+struct	PatchState
+{
+	float	edgeTessellation[3];
+	float	centerTessellation;
+
+	#if PATCH_CONSTANT_COUNT > 0
+		PATCH_CONSTANT_TYPE	constants[PATCH_CONSTANT_COUNT];
+	#endif
+};
+
+struct	DomainState
+{
+	vec3	position;
+	vec4	color;
+	vec3	tangent;
+	vec3	bitangent;
+	vec3	normal;
+	vec4	texcoord;
+};
+
+#endif

@@ -1,0 +1,100 @@
+#include "state.hull"
+
+BEGIN_INPUTS
+	INPUT0(vec3,fPosition)
+	INPUT1(vec4,fColor)
+	INPUT2(vec3,fTangent)
+	INPUT3(vec3,fBitangent)
+	INPUT4(vec3,fNormal)
+	INPUT5(vec4,fTexCoord)
+END_INPUTS
+
+BEGIN_OUTPUTS
+	OUTPUT0(vec3,fPosition)
+	OUTPUT1(vec4,fColor)
+	OUTPUT2(vec3,fTangent)
+	OUTPUT3(vec3,fBitangent)
+	OUTPUT4(vec3,fNormal)
+	OUTPUT5(vec4,fTexCoord)
+END_OUTPUTS
+
+BEGIN_PATCH_CONSTANTS
+	PATCH_EDGE_TESS(float,3)
+	PATCH_CENTER_TESS(float,1)
+	#if PATCH_CONSTANT_COUNT > 0
+		PATCH_CONSTANT0(PATCH_CONSTANT_TYPE,patchConst,PATCH_CONSTANT_COUNT)
+	#endif
+END_PATCH_CONSTANTS
+
+HULL_PATCH( CONTROL_POINTS_IN )
+{
+	ControlState s;
+	HINT_UNROLL
+	for( int i=0; i<CONTROL_POINTS_IN; ++i )
+	{
+		s.position[i] = IN(fPosition,i);
+		s.color[i] = IN(fColor,i);
+		s.tangent[i] = IN(fTangent,i);
+		s.bitangent[i] = IN(fBitangent,i);
+		s.normal[i] = IN(fNormal,i);
+		s.texcoord[i] = IN(fTexCoord,i);
+	}
+	s.pointID = 0;
+
+	PatchState ps;
+	ps.edgeTessellation[0] =
+	ps.edgeTessellation[1] =
+	ps.edgeTessellation[2] =
+	ps.centerTessellation = 1.0;
+
+	#ifdef Patch
+		Patch( s, ps );
+	#endif
+
+	EDGE_TESS(0) = ps.edgeTessellation[0];
+	EDGE_TESS(1) = ps.edgeTessellation[1];
+	EDGE_TESS(2) = ps.edgeTessellation[2];
+	CENTER_TESS(0) = ps.centerTessellation;
+
+	#if PATCH_CONSTANT_COUNT > 0
+		HINT_UNROLL
+		for( int k=0; k<PATCH_CONSTANT_COUNT; ++k )
+		{ CONSTANT(patchConst,k) = ps.constants[k]; }
+	#endif
+}
+
+HULL(	CONTROL_POINTS_IN, CONTROL_POINTS_OUT, DOMAIN_TRIANGLE,
+		TOPOLOGY_TRIANGLE_CCW, PARTITION_TYPE, 64.0 )
+{
+	ControlState s;
+	HINT_UNROLL
+	for( int i=0; i<CONTROL_POINTS_IN; ++i )
+	{
+		s.position[i] = IN(fPosition,i);
+		s.color[i] = IN(fColor,i);
+		s.tangent[i] = IN(fTangent,i);
+		s.bitangent[i] = IN(fBitangent,i);
+		s.normal[i] = IN(fNormal,i);
+		s.texcoord[i] = IN(fTexCoord,i);
+	}
+	s.pointID = POINTID;
+
+	HullState hs;
+	hs.position = s.position[POINTID];
+	hs.color = s.color[POINTID];
+	hs.tangent = s.tangent[POINTID];
+	hs.bitangent = s.bitangent[POINTID];
+	hs.normal = s.normal[POINTID];
+	hs.texcoord = s.texcoord[POINTID];
+
+	#ifdef Hull
+		Hull( s, hs );
+	#endif
+
+	OUT(fPosition) = hs.position;
+	OUT(fColor) = hs.color;
+	OUT(fTangent) = hs.tangent;
+	OUT(fBitangent) = hs.bitangent;
+	OUT(fNormal) = hs.normal;
+	OUT(fTexCoord) = hs.texcoord;
+}

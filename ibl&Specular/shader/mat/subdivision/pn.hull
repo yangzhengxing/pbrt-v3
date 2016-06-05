@@ -1,0 +1,72 @@
+#include "data/shader/mat/state.hull"
+
+uniform float	uTessellationFactor;
+uniform float	uPNTrianglesSmoothing;
+
+/*
+	A single triangle generates control points like so:
+
+	*---*---*---*
+	 \ / \ / \ /
+	  *   *   *
+	   \ / \ /
+	    *   *
+		 \ /
+		  *
+
+	3 as usual for a triangle, plus 7 additional interior points. -jdr
+*/
+
+vec3	projectToPNControlPlane( vec3 p, vec3 origin, vec3 normal )
+{
+	return p - dot( p - origin, normal ) * normal;
+}
+
+void	PatchPN( inout ControlState s, inout PatchState ps )
+{
+	ps.edgeTessellation[0] = max( length( s.position[1] - s.position[2] ) * uTessellationFactor, 1.0 );
+	ps.edgeTessellation[1] = max( length( s.position[2] - s.position[0] ) * uTessellationFactor, 1.0 );
+	ps.edgeTessellation[2] = max( length( s.position[0] - s.position[1] ) * uTessellationFactor, 1.0 );
+	ps.centerTessellation = max( max( ps.edgeTessellation[0], ps.edgeTessellation[1]), ps.edgeTessellation[2] );
+
+	vec3 b030 = s.position[0].xyz,
+		 b003 = s.position[1].xyz,
+		 b300 = s.position[2].xyz;
+
+	vec3 edgeb300 = b003 - b030;
+	vec3 edgeb030 = b300 - b003;
+	vec3 edgeb003 = b030 - b300;
+
+	vec3 b021 = b030 + edgeb300 / 3.0;
+	vec3 b012 = b030 + edgeb300 * (2.0/3.0);
+	vec3 b102 = b003 + edgeb030 / 3.0;
+	vec3 b201 = b003 + edgeb030 * (2.0/3.0);
+	vec3 b210 = b300 + edgeb003 / 3.0;
+	vec3 b120 = b300 + edgeb003 * (2.0/3.0);
+
+	vec3	n0 = uPNTrianglesSmoothing * normalize( s.normal[0] ),
+			n1 = uPNTrianglesSmoothing * normalize( s.normal[1] ),
+			n2 = uPNTrianglesSmoothing * normalize( s.normal[2] );
+	b021 = projectToPNControlPlane( b021, b030, n0 );
+	b012 = projectToPNControlPlane( b012, b003, n1 );
+	b102 = projectToPNControlPlane( b102, b003, n1 );
+	b201 = projectToPNControlPlane( b201, b300, n2 );
+	b210 = projectToPNControlPlane( b210, b300, n2 );
+	b120 = projectToPNControlPlane( b120, b030, n0 );
+
+	vec3 center = (	b003 + b030 + b300 ) / 3.0;
+	vec3 b111 = ( b021 + b012 + b102 + b201 + b210 + b120 ) / 6.0;
+	b111 += ( b111 - center ) * 0.5;
+
+	ps.constants[0] = b201;
+	ps.constants[1] = b210;
+
+	ps.constants[2] = b102;
+	ps.constants[3] = b111;
+	ps.constants[4] = b120;
+
+	ps.constants[5] = b012;
+	ps.constants[6] = b021;
+}
+
+#define	Patch	PatchPN

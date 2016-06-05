@@ -1,0 +1,13 @@
+#include "data/shader/mat/state.hull"
+
+uniform float	uTessellationFactor;
+
+void	PatchFlat( inout ControlState s, inout PatchState ps )
+{
+	ps.edgeTessellation[0] = max( length( s.position[1] - s.position[2] ) * uTessellationFactor, 1.0 );
+	ps.edgeTessellation[1] = max( length( s.position[2] - s.position[0] ) * uTessellationFactor, 1.0 );
+	ps.edgeTessellation[2] = max( length( s.position[0] - s.position[1] ) * uTessellationFactor, 1.0 );
+	ps.centerTessellation = max( max( ps.edgeTessellation[0], ps.edgeTessellation[1]), ps.edgeTessellation[2] );
+}
+
+#define	Patch	PatchFlat

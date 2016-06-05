@@ -1,0 +1,84 @@
+#include "../common/util.sh"
+#include "state.dom"
+
+uniform mat4	uModelLightMatrix;
+uniform mat4	uModelInverseTransposeLightMatrix;
+uniform mat4	uModelViewProjectionMatrix;
+
+BEGIN_INPUTS
+	INPUT0(vec3,fPosition)
+	INPUT1(vec4,fColor)
+	INPUT2(vec3,fTangent)
+	INPUT3(vec3,fBitangent)
+	INPUT4(vec3,fNormal)
+	INPUT5(vec4,fTexCoord)
+END_INPUTS
+
+BEGIN_OUTPUTS
+	OUTPUT0(vec3,fPosition)
+	OUTPUT1(vec4,fColor)
+	OUTPUT2(vec3,fTangent)
+	OUTPUT3(vec3,fBitangent)
+	OUTPUT4(vec3,fNormal)
+	OUTPUT5(vec4,fTexCoord)
+END_OUTPUTS
+
+BEGIN_PATCH_CONSTANTS
+	PATCH_EDGE_TESS(float,3)
+	PATCH_CENTER_TESS(float,1)
+	#if PATCH_CONSTANT_COUNT > 0
+		PATCH_CONSTANT0(PATCH_CONSTANT_TYPE,patchConst,PATCH_CONSTANT_COUNT)
+	#endif
+END_PATCH_CONSTANTS
+
+DOMAIN( CONTROL_POINTS_OUT, DOMAIN_TRIANGLE, vec3 )
+{
+	ControlState s;
+	HINT_UNROLL
+	for( int i=0; i<CONTROL_POINTS_OUT; ++i )
+	{
+		s.position[i] = IN(fPosition,i);
+		s.color[i] = IN(fColor,i);
+		s.tangent[i] = IN(fTangent,i);
+		s.bitangent[i] = IN(fBitangent,i);
+		s.normal[i] = IN(fNormal,i);
+		s.texcoord[i] = IN(fTexCoord,i);
+	}
+	s.domainCoord = DOMAIN_COORD;
+
+	PatchState ps;
+	ps.edgeTessellation[0] = EDGE_TESS(0);
+	ps.edgeTessellation[1] = EDGE_TESS(1);
+	ps.edgeTessellation[2] = EDGE_TESS(2);
+	ps.centerTessellation = CENTER_TESS(0);
+	#if PATCH_CONSTANT_COUNT > 0
+		HINT_UNROLL
+		for( int k=0; k<PATCH_CONSTANT_COUNT; ++k )
+		{ ps.constants[k] = CONSTANT(patchConst,k); }
+	#endif
+
+	#define	interp(p)	(DOMAIN_COORD.x*IN(p,0) + DOMAIN_COORD.y*IN(p,1) + DOMAIN_COORD.z*IN(p,2))
+	DomainState ds;
+	ds.position = interp(fPosition);
+	ds.color = interp(fColor);
+	ds.tangent = interp(fTangent);
+	ds.bitangent = interp(fBitangent);
+	ds.normal = interp(fNormal);
+	ds.texcoord = interp(fTexCoord);
+
+	#ifdef Subdivision
+		Subdivision( s, ps, ds );
+	#endif
+
+	#ifdef Displacement
+		Displacement( s, ps, ds );
+	#endif
+
+	OUT_POSITION = mulPoint( uModelViewProjectionMatrix, ds.position );
+	OUT(fPosition) = mulPoint( uModelLightMatrix, ds.position ).xyz;
+	OUT(fColor) = ds.color;
+	OUT(fTangent) = normalize( mulVec( uModelInverseTransposeLightMatrix, ds.tangent ) );
+	OUT(fBitangent) = normalize( mulVec( uModelInverseTransposeLightMatrix, ds.bitangent ) );
+	OUT(fNormal) = normalize( mulVec( uModelInverseTransposeLightMatrix, ds.normal ) );
+	OUT(fTexCoord) = ds.texcoord;
+}
